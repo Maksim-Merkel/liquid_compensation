@@ -2,41 +2,58 @@ import wx
 ID_CB = 1
 ID_BTN_CHOICE = 2
 ID_BTN_NEW = 3
+
+ADD_BASE = """INSERT INTO bases (base_name) VALUES (?);"""
+
 class BaseSelection(wx.Frame):
     def __init__(self, parent, title, combolist):
         super().__init__(parent, -1, title)
-
+        self.SetSize(400, 120)
         self.base = None
+        self.combolist = combolist
 
         panel = wx.Panel(self)
         vbox = wx.BoxSizer(wx.VERTICAL)
 
-        bases_combo = wx.ComboBox(panel, ID_CB, value="", choices=combolist)
-        vbox.Add(bases_combo, proportion=1, flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, border=10)
+        self.bases_combo = wx.ComboBox(panel, ID_CB, value="", choices=combolist)
+        vbox.Add(self.bases_combo, proportion=1, flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, border=10)
 
         hbox1 = wx.BoxSizer(wx.HORIZONTAL)
         btn1 = wx.Button(panel, label="Выбрать базу")
         btn2 = wx.Button(panel, label="Добавить базу")
-        hbox1.Add(btn1, proportion=1, flag=wx.LEFT | wx.BOTTOM, border=10)
-        hbox1.Add(btn2, proportion=1, flag=wx.RIGHT | wx.BOTTOM, border=10)
+        hbox1.Add(btn1, proportion=1)
+        hbox1.Add(btn2, proportion=1)
         vbox.Add(hbox1, proportion=1, flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, border=10)
 
         panel.SetSizer(vbox)
 
-
+        self.bases_combo.Bind(wx.EVT_COMBOBOX, self.OnCombo)
         btn1.Bind(wx.EVT_BUTTON, self.onBtn_choice)
         btn2.Bind(wx.EVT_BUTTON, self.onBtn_new)
         #print(combolist)
 
+    def OnCombo(self, e):
+        self.base = self.bases_combo.GetValue()
+
     def onBtn_choice(self, e):
-        print(1)
+        self.Parent.base = self.base
+        print(self.Parent.base)
+        self.onQuit()
 
     def onBtn_new(self, e):
-        print(2)
+        self.Parent.base = self.bases_combo.GetValue()
+        print(self.Parent.base)
+        self.onQuit()
+        if self.Parent.base not in self.combolist and self.Parent.base:
+            self.Parent.cursor.execute(ADD_BASE, (self.Parent.base,))
+            self.Parent.db.commit()
+            print('Добавлена новая база: ', self.Parent.base)
+    def onQuit(self):
+        self.Close()
 
-
-app = wx.App()
-frame = BaseSelection(None, 'Hello World', ['Тест', 'Хуест'])
-frame.Show()
-app.MainLoop()
-frame.db.close()
+if __name__ == 'main':
+    app = wx.App()
+    frame = BaseSelection(None, 'Hello World', ['Тест', 'Хуест'])
+    frame.Show()
+    app.MainLoop()
+    frame.db.close()

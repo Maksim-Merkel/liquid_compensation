@@ -4,6 +4,7 @@ import os
 from BaseSelection import BaseSelection
 
 SELECT_BASES = """SELECT base_name from bases"""
+ADD_BASE = """INSERT INTO bases (base_name) VALUES (?);"""
 
 ID_IMP_T = 1
 ID_IMP_D = 2
@@ -14,6 +15,7 @@ DATABASE = os.getcwd() + '/conpensation.db'
 class MyFrame(wx.Frame):
     def __init__(self, parent, title):
         # подключение/создание базы данных
+        self.base = None
         self.db = None
         self.cursor = None
         self.create_db()
@@ -41,7 +43,29 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onQuit, id=wx.ID_EXIT)
         #Выбор месторождения
         self.Bind(wx.EVT_MENU, self.onDB, id=ID_DB)
+        #Импорт траекторий
+        self.Bind(wx.EVT_MENU, self.onImp_Trajectory, id=ID_IMP_T)
+        # Импорт данных
+        self.Bind(wx.EVT_MENU, self.onImp_Data, id=ID_IMP_D)
 
+    def onImp_Data(self, event):
+        pass
+
+    def onImp_Trajectory(self, event):
+        with wx.FileDialog(self, "Открыть файл траекторий", wildcard="txt files (*.txt)|*.txt",
+                           style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fileDialog:
+
+            if fileDialog.ShowModal() == wx.ID_CANCEL:
+                return  # the user changed their mind
+
+            # save the current contents in the file
+            pathname = fileDialog.GetPath()
+            print(pathname)
+            #try:
+            #    with open(pathname, 'w') as file:
+            #        self.doSaveData(file)
+            #except IOError:
+            #    wx.LogError("Cannot save current data in file '%s'." % pathname)
     def onQuit(self, event):
         self.Close()
 
@@ -53,6 +77,8 @@ class MyFrame(wx.Frame):
             for row in bases:
                 combolist.append(row[0])
             BaseSelection(self, "Выбор базы данных", combolist).Show()
+
+
         else:
             print('База данных неопределена')
     def connect_db(self):
