@@ -1,7 +1,7 @@
 import wx
-ID_CB = 1
-ID_BTN_CHOICE = 2
-ID_BTN_NEW = 3
+ID_CB = 111
+ID_BTN_CHOICE = 112
+ID_BTN_NEW = 113
 
 FIND_BASE = """SELECT id FROM bases WHERE base_name = ?"""
 ADD_BASE = """INSERT INTO bases (base_name) VALUES (?);"""
