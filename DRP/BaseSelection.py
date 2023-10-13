@@ -1,4 +1,6 @@
 import wx
+from Field import Field
+
 ID_CB = 111
 ID_BTN_CHOICE = 112
 ID_BTN_NEW = 113
