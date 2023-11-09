@@ -12,9 +12,16 @@ from wx.lib.plot import PlotCanvas, PlotGraphics, PolyLine, PolyMarker
 import numpy as _Numeric
 import random
 
+from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
 
 SELECT_BASES = """SELECT base_name FROM bases"""
 SELECT_CASES_PER_FIELD = """SELECT * FROM cases WHERE base_name_id = ?"""
@@ -338,6 +345,8 @@ class MyFrame(wx.Frame):
         print('Классификация')
         self.y_keys = {'Штатный режим': 0, 'Высокая подгонка или подклинка': 1, 'Низкая подгонка плунжера': 2, 'АСПО,Эмульсия': 3}
         #clf_model = KNeighborsClassifier(n_neighbors=3)
+        
+        #best----------------------------------------------------------------
         rf_clf = RandomForestClassifier()
         parameters = {
                 'max_depth': list(range(2, 3)), 
@@ -345,24 +354,51 @@ class MyFrame(wx.Frame):
                 'criterion':['entropy'],  
                 'min_samples_split': list(range(2, 5))
                 }
+                #'max_depth': list(range(2, 5)), 
+                #'n_estimators' : list(range(10, 90, 10)), 
+                #'criterion':['entropy'],  
+                #'min_samples_split': list(range(2, 5))
         clf_model = GridSearchCV(rf_clf, parameters)
+        #---------------------------------------------------------------------------
+        
+        #gb_clf = GradientBoostingClassifier()
+        #parameters = {
+        #        'n_estimators' : list(range(1, 10, 1)), 
+        #        'min_samples_split': list(range(1, 60, 10))
+        #        }
+        #clf_model = GridSearchCV(gb_clf, parameters)
+        #clf_model = SVC()
 
         X, y = self.create_training_set()
         clf_model.fit(X, y)
-
+        #print(X)
+        #print(y)
+        data = [X[i] + [y[i]] for i in range(len(X))]
         complication = []
         shtat_complication = []
         ASPO_complication = []
         low_complication = []
         hight_complication = []
+        self.choiced_test_case_ml = []
         for key in self.test_cases.keys():
-            
+            self.choiced_test_case_ml.append(key)
             test_s, test_p = self.just_pooling(self.test_cases[key])
             areas = self.additional_signs(self.test_cases[key])
             #print(key, test_p, areas)
             pred = clf_model.predict([test_p + areas])[0]
             fact_complication_ind = self.y_keys[self.test_cases[key].case_status]
             fact_complication = self.test_cases[key].case_status
+            #МЕГАКОСТЫЛЬ-----------------------------------------------------------------------------------------------
+            
+            min_p = min(self.test_cases[key].p_list)
+            max_p = max(self.test_cases[key].p_list)
+            high_p = [(point - min_p)/(max_p-min_p) for point in self.test_cases[key].p_list]
+
+            if 1 in high_p[125:175] and sum(high_p[100:125])/25 < 0.9:
+                pred = self.y_keys['Высокая подгонка или подклинка']
+                print('Высокая подгонка или подклинка')
+            #МЕГАКОСТЫЛЬ-----------------------------------------------------------------------------------------------
+
             if pred == fact_complication_ind:
                 complication.append(True)
                 if fact_complication == 'Штатный режим':
@@ -383,6 +419,19 @@ class MyFrame(wx.Frame):
                     ASPO_complication.append(False)
                 elif fact_complication == 'Высокая подгонка или подклинка':
                     hight_complication.append(False)
+        
+        #columns = list(range(len(X[0]))) + ['mode']
+        #index = range(len(data))
+        #df = pd.DataFrame(data, index, columns)
+
+        #sns.pairplot(df, kind="scatter", hue="mode", plot_kws=dict(s=80, edgecolor="white", linewidth=1))
+        #plt.savefig(os.getcwd() + '/Параметры' + '.png')
+        #plt.clf()
+        
+        self.ml_canvas_shtatplot.Draw(self.plot_symbols_for_case('Штатный режим', self.choiced_test_case_ml, complication))
+        self.ml_canvas_ASPOplot.Draw(self.plot_symbols_for_case('АСПО,Эмульсия', self.choiced_test_case_ml, complication))
+        self.ml_canvas_hightplot.Draw(self.plot_symbols_for_case('Высокая подгонка или подклинка', self.choiced_test_case_ml, complication))
+        self.ml_canvas_lowplot.Draw(self.plot_symbols_for_case('Низкая подгонка плунжера', self.choiced_test_case_ml, complication))
             
         all_percent = str(int(sum(complication)/len(complication)*100))
         shtat_percent = self.percent_calculator(shtat_complication)
@@ -801,21 +850,21 @@ class MyFrame(wx.Frame):
                     else:    
                         lines.append(PolyLine(list(zip(test_s, test_p)), 
                                               legend='Фактическое поведение', colour='red', width=3))
-            if key == 'Штатный режим':
-                lines.append(PolyMarker(list(zip(test_s, self.alphabet[key])), 
-                                        legend='Символ штатного режима', colour='black', width=0.1, size = 0.6))
+            #if key == 'Штатный режим':
+            #    lines.append(PolyMarker(list(zip(test_s, self.alphabet[key])), 
+            #                            legend='Символ штатного режима', colour='black', width=0.1, size = 0.6))
 
-            elif key == 'Низкая подгонка плунжера':
-                lines.append(PolyMarker(list(zip(test_s, self.alphabet[key])), 
-                                        legend='Символ низкой подгонки плунженра', colour='black', width=0.1, size = 0.6))
+            #elif key == 'Низкая подгонка плунжера':
+            #    lines.append(PolyMarker(list(zip(test_s, self.alphabet[key])), 
+            #                            legend='Символ низкой подгонки плунженра', colour='black', width=0.1, size = 0.6))
 
-            elif key == 'АСПО,Эмульсия':
-                lines.append(PolyMarker(list(zip(test_s, self.alphabet[key])), 
-                                        legend='Символ АСПО,Эмульсии', colour='black', width=0.1, size = 0.6))
+            #elif key == 'АСПО,Эмульсия':
+            #    lines.append(PolyMarker(list(zip(test_s, self.alphabet[key])), 
+            #                            legend='Символ АСПО,Эмульсии', colour='black', width=0.1, size = 0.6))
 
-            elif key == 'Высокая подгонка или подклинка':
-                lines.append(PolyMarker(list(zip(test_s, self.alphabet[key])), 
-                                        legend='Символ высокой подгонки или подклинки', colour='black', width=0.1, size = 0.6))
+            #elif key == 'Высокая подгонка или подклинка':
+            #    lines.append(PolyMarker(list(zip(test_s, self.alphabet[key])), 
+            #                            legend='Символ высокой подгонки или подклинки', colour='black', width=0.1, size = 0.6))
                 
             return PlotGraphics(lines, "", "time", "P")
         
